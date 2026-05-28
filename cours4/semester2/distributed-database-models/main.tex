@@ -1,0 +1,25 @@
+% !TeX program = xelatex
+\documentclass[14pt,a4paper]{extarticle}
+
+% Єдина точка підключення оформлення ДСТУ і лістингів коду.
+\usepackage{mdu-dstu}
+
+\begin{document}
+
+\input{titlepage}
+% Титульний аркуш входить до загальної нумерації як сторінка 1,
+% але номер на ньому не друкується.
+\setcounter{page}{2}
+
+\tableofcontents
+\clearpage
+
+\input{sections/introduction}
+\input{sections/chapter1}
+\input{sections/chapter2}
+\input{sections/chapter3}
+\input{sections/conclusions}
+\input{sections/references}
+\input{sections/appendix_a}
+
+\end{document}

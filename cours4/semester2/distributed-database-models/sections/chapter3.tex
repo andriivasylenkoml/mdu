@@ -1,0 +1,115 @@
+\clearpage
+\section{ПРАКТИЧНА РЕАЛІЗАЦІЯ ТА ОЦІНЮВАННЯ РЕЗУЛЬТАТІВ У POSTGRESQL}
+
+\paragraphheading{Структура програмної моделі.}
+Практична реалізація містить два вузли даних і програму-координатор. Склад компонентів наведено в табл.~\ref{tab:nodes}.
+
+\begin{table}[htbp]
+\centering
+\caption{Структура компонентів практичної реалізації}
+\label{tab:nodes}
+\fontsize{11pt}{13pt}\selectfont
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{0.17\textwidth}|
+                               >{\RaggedRight\arraybackslash}p{0.24\textwidth}|
+                               Y|}
+\hline
+\textbf{Компонент} & \textbf{База даних або засіб} & \textbf{Призначення} \\
+\hline
+\texttt{Node A} &
+\texttt{bank\_node\_a} &
+Зберігає таблицю \texttt{accounts} із рахунком відправника \texttt{101} і таблицю \texttt{transfer\_journal}. \\
+\hline
+\texttt{Node B} &
+\texttt{bank\_node\_b} &
+Зберігає таблицю \texttt{accounts} із рахунком отримувача \texttt{202} і таблицю \texttt{transfer\_journal}. \\
+\hline
+Координатор &
+Python-програма &
+Збирає відповіді \texttt{READY}/\texttt{ABORT}, записує рішення та завершує prepared transactions. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\paragraphheading{Підготовка середовища PostgreSQL.}
+Команди запускаються у \texttt{psql} від імені користувача, який має право створювати бази даних та змінювати параметри сервера. Якщо значення \texttt{max\_prepared\_transactions} дорівнює \texttt{0}, функціональність prepared transactions потрібно активувати, після чого перезапустити службу PostgreSQL.
+
+\begin{lstlisting}[language=SQL,caption={Перевірка та налаштування prepared transactions},label={lst:setup}]
+SHOW max_prepared_transactions;
+
+-- Якщо результат дорівнює 0:
+ALTER SYSTEM SET max_prepared_transactions = 10;
+
+-- Після перезапуску служби PostgreSQL:
+\i 01_setup_nodes.sql
+\end{lstlisting}
+
+\paragraphheading{Виконання успішного переказу.}
+Успішний сценарій зберігається у файлі \path{02_successful_transfer_2pc.sql}. На першій фазі обидва вузли виконують локальні зміни та готують транзакції, а після отримання двох відповідей \texttt{READY} координатор виконує глобальну фіксацію.
+
+\begin{lstlisting}[language=SQL,caption={Успішний сценарій переказу за протоколом 2PC},label={lst:success}]
+-- Node A: попереднє списання
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+UPDATE accounts SET balance = balance - 250.00
+WHERE account_id = 101 AND is_active = true AND balance >= 250.00;
+PREPARE TRANSACTION 'transfer_001_node_a';
+
+-- Node B: попереднє зарахування
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+UPDATE accounts SET balance = balance + 250.00
+WHERE account_id = 202 AND is_active = true;
+PREPARE TRANSACTION 'transfer_001_node_b';
+
+-- Координатор після двох відповідей READY
+COMMIT PREPARED 'transfer_001_node_a';
+COMMIT PREPARED 'transfer_001_node_b';
+\end{lstlisting}
+
+Після успішної фіксації очікувані значення балансів подано в табл.~\ref{tab:balances}. Одиницю грошового вимірювання позначено міжнародним кодом \(\mathrm{UAH}\).
+
+\begin{table}[htbp]
+\centering
+\caption{Очікувані результати успішного переказу}
+\label{tab:balances}
+\fontsize{11pt}{13pt}\selectfont
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}Y|
+                               >{\Centering\arraybackslash}p{0.23\textwidth}|
+                               >{\Centering\arraybackslash}p{0.18\textwidth}|
+                               >{\Centering\arraybackslash}p{0.22\textwidth}|}
+\hline
+\textbf{Вузол і рахунок} & \textbf{Початковий баланс, \(\mathrm{UAH}\)} & \textbf{Операція, \(\mathrm{UAH}\)} & \textbf{Кінцевий баланс, \(\mathrm{UAH}\)} \\
+\hline
+\texttt{Node A}, рахунок \texttt{101} & \(1000.00\) & \(-250.00\) & \(750.00\) \\
+\hline
+\texttt{Node B}, рахунок \texttt{202} & \(300.00\) & \(+250.00\) & \(550.00\) \\
+\hline
+\end{tabularx}
+\end{table}
+
+До виконання остаточного \texttt{COMMIT} стан підготовлених транзакцій можна перевірити запитом, наведеним у лістингу~\ref{lst:prepared}.
+
+\begin{lstlisting}[language=SQL,caption={Перегляд підготовлених транзакцій},label={lst:prepared}]
+SELECT gid, database, owner, prepared
+FROM pg_prepared_xacts
+WHERE gid IN ('transfer_001_node_a', 'transfer_001_node_b');
+\end{lstlisting}
+
+\paragraphheading{Виконання сценарію відкату.}
+У файлі \path{03_abort_transfer_2pc.sql} моделюється ситуація, коли рахунок отримувача стає неактивним. Якщо \texttt{Node A} уже підготував списання, а \texttt{Node B} повернув \texttt{ABORT}, координатор скасовує підготовлену транзакцію відправника. У цьому випадку баланс рахунку \texttt{101} залишається на рівні \(1000.00~\mathrm{UAH}\).
+
+\begin{lstlisting}[language=SQL,caption={Сценарій відкату підготовленої транзакції},label={lst:abort}]
+-- Node B не готовий прийняти переказ
+UPDATE accounts SET is_active = false WHERE account_id = 202;
+
+-- Node A уже підготував списання
+PREPARE TRANSACTION 'transfer_002_node_a';
+
+-- Рішення координатора
+ROLLBACK PREPARED 'transfer_002_node_a';
+\end{lstlisting}
+
+\paragraphheading{Узагальнення результатів реалізації.}
+Склад допоміжних файлів, команди запуску програмного координатора та перелік ілюстрацій для підтвердження результатів наведено в додатку~А. Основна частина експерименту підтверджує: за успішного сценарію змінюються обидва баланси, а за відмови підготовлена операція скасовується без часткового переказу.
+

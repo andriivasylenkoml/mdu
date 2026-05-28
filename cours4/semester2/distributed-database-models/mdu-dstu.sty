@@ -1,0 +1,10 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{mdu-dstu}[2026/05/28 MDU DSTU laboratory report style]
+
+\RequirePackage{dstu3008-2015}
+\RequirePackage{dstu-code-listings}
+
+% Абзацний заголовок для коротких фрагментів без створення підрозділу.
+\newcommand{\paragraphheading}[1]{%
+    \par\medskip\noindent\textbf{#1}\par\nobreak\smallskip
+}

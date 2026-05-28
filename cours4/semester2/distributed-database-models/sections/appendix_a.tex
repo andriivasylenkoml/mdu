@@ -1,0 +1,86 @@
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{ДОДАТОК А}
+\section*{ДОДАТОК А}
+\begin{center}
+\textbf{ФАЙЛИ РЕАЛІЗАЦІЇ ТА МАТЕРІАЛИ ПІДТВЕРДЖЕННЯ РЕЗУЛЬТАТІВ}
+\end{center}
+
+\renewcommand{\thetable}{А.\arabic{table}}
+\renewcommand{\thelstlisting}{А.\arabic{lstlisting}}
+\setcounter{table}{0}
+\setcounter{lstlisting}{0}
+
+
+\paragraphheading{Додаткові умови збереження цілісності даних.}
+Коректність переказу перевіряється не тільки фактом завершення обох локальних транзакцій, а й виконанням предметних обмежень. Перед переходом до стану \texttt{PREPARED} вузол відправника повинен підтвердити, що рахунок активний і містить достатній залишок, а вузол отримувача --- що зарахування дозволене. Додатково координатор має використовувати один глобальний ідентифікатор для всіх локальних операцій, щоб рішення не було застосоване до іншої транзакції.
+
+\begin{table}[htbp]
+\centering
+\caption{Умови коректного завершення банківського переказу}
+\label{tab:integrity-conditions}
+\fontsize{11pt}{13pt}\selectfont
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{0.28\textwidth}|
+                               >{\RaggedRight\arraybackslash}p{0.30\textwidth}|
+                               Y|}
+\hline
+\textbf{Умова} & \textbf{Перевірка} & \textbf{Результат порушення} \\
+\hline
+Активність рахунку відправника & Поле \texttt{is\_active} для рахунку \texttt{101} має значення \texttt{true}. & Транзакція не переходить до \texttt{PREPARED}; формується \texttt{ABORT}. \\
+\hline
+Достатність коштів & Виконується умова \texttt{balance >= 250.00}. & Списання не здійснюється; глобальне рішення --- \texttt{ROLLBACK}. \\
+\hline
+Активність рахунку отримувача & Поле \texttt{is\_active} для рахунку \texttt{202} має значення \texttt{true}. & Підготовлене списання на \texttt{Node A} скасовується. \\
+\hline
+Стійкість рішення координатора & Рішення та глобальний ідентифікатор записані до журналу до розсилання завершальних команд. & Після відновлення неможливо надійно визначити потрібну завершальну дію. \\
+\hline
+\end{tabularx}
+\end{table}
+
+За успішного завершення переказу виконується інваріант сукупного залишку: списання суми \(250.00~\mathrm{UAH}\) з одного рахунку супроводжується зарахуванням тієї самої суми на інший рахунок. Отже, зміна балансу одного вузла компенсується протилежною зміною другого вузла. Якщо хоча б одна перевірка завершується невдало, жодна з підготовлених змін не має стати остаточною.
+
+Такий порядок перевірок дає змогу розділити технічні відмови та порушення правил предметної області. Помилка мережі або збій координатора потребують відновлення відповідно до журналу рішень, тоді як неактивний рахунок чи недостатній залишок є підставою для прогнозованого відкату операції ще до її фіксації.
+
+\paragraphheading{Файли та запуск програмного координатора.}
+Склад файлів практичної реалізації наведено в табл.~\ref{tab:files}.
+
+\begin{table}[htbp]
+\centering
+\caption{Файли практичної реалізації}
+\label{tab:files}
+\fontsize{11pt}{13pt}\selectfont
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{0.34\textwidth}|Y|}
+\hline
+\textbf{Файл} & \textbf{Призначення} \\
+\hline
+\path{01_setup_nodes.sql} &
+Створює дві бази-вузли, таблиці \texttt{accounts} та \texttt{transfer\_journal}, а також початкові баланси. \\
+\hline
+\path{02_successful_transfer_2pc.sql} &
+Демонструє успішний переказ із використанням \texttt{PREPARE} та \texttt{COMMIT PREPARED}. \\
+\hline
+\path{03_abort_transfer_2pc.sql} &
+Демонструє відмову \texttt{Node B} та відкат через \texttt{ROLLBACK PREPARED}. \\
+\hline
+\path{coordinator_2pc.py} &
+Автоматизує роботу координатора 2PC через підключення до двох баз PostgreSQL. \\
+\hline
+\path{requirements.txt} &
+Визначає залежність Python-драйвера \texttt{psycopg} для запуску координатора. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=bash,caption={Запуск автоматизованого координатора},label={lst:coordinator}]
+python -m pip install -r requirements.txt
+python coordinator_2pc.py 250.00
+\end{lstlisting}
+
+Програма застосовує два підключення з режимом \texttt{autocommit=True}, оскільки команди \texttt{COMMIT PREPARED} та \texttt{ROLLBACK PREPARED} виконуються поза іншим транзакційним блоком. Перед передаванням команди \texttt{COMMIT} рішення записується у файл \path{coordinator_decisions.log}; це дає змогу після збою повторити завершення невирішеної prepared transaction.
+
+\paragraphheading{Перелік ілюстрацій для звіту.}
+Для підтвердження виконання практичної частини до звіту слід додати скріншоти: початкових балансів після виконання \path{01_setup_nodes.sql}; стану \texttt{pg\_prepared\_xacts} після фази \texttt{PREPARE}; кінцевих балансів після \texttt{COMMIT PREPARED}; результату відкату \texttt{ROLLBACK}; консольного виводу \path{coordinator_2pc.py} із рішенням координатора.

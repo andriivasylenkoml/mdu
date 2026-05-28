@@ -1,0 +1,48 @@
+```latex
+% ---------- Лістинги програмного коду ----------
+\RequirePackage{xcolor}
+\RequirePackage{listings}
+\RequirePackage{caption}
+\RequirePackage{chngcntr}
+
+\AtBeginDocument{\counterwithin{lstlisting}{section}}
+
+\renewcommand{\lstlistingname}{Лістинг}
+
+\captionsetup[lstlisting]{
+  labelsep=dstudash,
+  position=top,
+  justification=raggedright,
+  singlelinecheck=false,
+  font=small
+}
+
+\lstdefinelanguage{SQL}{
+  keywords={
+    SELECT,FROM,WHERE,IN,SHOW,ALTER,SYSTEM,SET,UPDATE,BEGIN,TRANSACTION,
+    ISOLATION,LEVEL,SERIALIZABLE,AND,TRUE,PREPARE,COMMIT,ROLLBACK,PREPARED
+  },
+  sensitive=false,
+  morecomment=[l]{--},
+  morestring=[b]'
+}
+
+\lstset{
+  basicstyle=\ttfamily\fontsize{8pt}{10pt}\selectfont,
+  numbers=left,
+  numberstyle=\ttfamily\fontsize{9pt}{10pt}\selectfont,
+  stepnumber=1,
+  numbersep=8pt,
+  frame=single,
+  framesep=4pt,
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=4,
+  captionpos=t,
+  aboveskip=0.75\baselineskip,
+  belowskip=0.75\baselineskip
+}
+```

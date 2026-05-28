@@ -1,0 +1,144 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{dstu3008-2015}[2026/05/28 DSTU 3008:2015 formatting]
+
+% ---------- Параметри сторінки ----------
+\RequirePackage[a4paper,left=30mm,right=15mm,top=20mm,bottom=20mm]{geometry}
+
+% ---------- Мова і шрифти ----------
+\RequirePackage{fontspec}
+\RequirePackage{polyglossia}
+
+\setdefaultlanguage{ukrainian}
+
+% Основний шрифт документа
+\setmainfont[
+  Ligatures=TeX
+]{Times New Roman}
+
+% Явне визначення шрифту для української кирилиці
+\newfontfamily\cyrillicfont[
+  Script=Cyrillic,
+  Ligatures=TeX
+]{Times New Roman}
+
+% Моноширинний шрифт для SQL, Bash і назв файлів
+\setmonofont{DejaVu Sans Mono}
+\newfontfamily\cyrillicfonttt[
+  Script=Cyrillic
+]{DejaVu Sans Mono}
+
+% ---------- Основний текст ----------
+\RequirePackage{setspace}
+\onehalfspacing
+\RequirePackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+\RequirePackage{ragged2e}
+\justifying
+\RequirePackage{microtype}
+\emergencystretch=3em
+
+% ---------- Заголовки ----------
+\RequirePackage{titlesec}
+\titleformat{\section}
+  {\normalfont\bfseries\centering}
+  {\thesection}{1em}{}
+\titleformat{name=\section,numberless}
+  {\normalfont\bfseries\centering}
+  {}{0pt}{}
+\titlespacing*{\section}{0pt}{1.5\baselineskip}{0.75\baselineskip}
+
+% ---------- Зміст ----------
+\RequirePackage{tocloft}
+
+\renewcommand{\contentsname}{ЗМІСТ}
+\renewcommand{\cfttoctitlefont}{\hfill\normalfont\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill\null}
+
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\setcounter{tocdepth}{1}
+
+% ---------- Списки ----------
+\RequirePackage{enumitem}
+\setlist[itemize]{
+  label=--,
+  leftmargin=1.25cm,
+  itemsep=0pt,
+  topsep=0.25\baselineskip
+}
+\setlist[enumerate]{
+  leftmargin=1.25cm,
+  itemsep=0pt,
+  topsep=0.25\baselineskip
+}
+
+% ---------- Таблиці та рисунки ----------
+\RequirePackage{array}
+\RequirePackage{tabularx}
+\RequirePackage{longtable}
+\RequirePackage{booktabs}
+\RequirePackage{graphicx}
+\RequirePackage{caption}
+\RequirePackage{chngcntr}
+\counterwithin{table}{section}
+\counterwithin{figure}{section}
+\DeclareCaptionLabelSeparator{dstudash}{~---~}
+\captionsetup[table]{
+  name=Таблиця,
+  labelsep=dstudash,
+  position=top,
+  font=small,
+  justification=raggedright,
+  singlelinecheck=false
+}
+\captionsetup[figure]{
+  name=Рисунок,
+  labelsep=dstudash,
+  position=bottom,
+  font=small,
+  justification=centering,
+  singlelinecheck=false
+}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+
+% ---------- Нумерація сторінок ----------
+\RequirePackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+
+% ---------- URL та внутрішні посилання ----------
+\RequirePackage{xurl}
+\RequirePackage{hyperref}
+
+\hypersetup{
+  hidelinks,
+  unicode=true,
+  pdftitle={Лабораторна робота №12--13. Розподілені транзакції у розподілених базах даних},
+  pdfauthor={Василенко Андрій Васильович}
+}
+
+% ---------- Розмір URL та назв файлів ----------
+% Інтернет-адреси у списку джерел: \url{...} --- 12 pt.
+\DeclareUrlCommand\url{%
+  \urlstyle{tt}%
+  \fontsize{12pt}{14pt}\selectfont%
+}
+
+
+% ---------- Моноширинні фрагменти в основному тексті ----------
+% SQL-команди та назви об'єктів у рядку --- 12 pt.
+\RenewDocumentCommand{\texttt}{m}{%
+  {\ttfamily\fontsize{10pt}{12pt}\selectfont #1}%
+}
+
+% Назви файлів і шляхи: \path{...} --- 10 pt.
+\DeclareUrlCommand\path{%
+  \urlstyle{tt}%
+  \fontsize{10pt}{12pt}\selectfont%
+}
+
+\renewcommand{\refname}{ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ}
